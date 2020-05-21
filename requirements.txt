@@ -1,0 +1,14 @@
+tensorflow
+opencv-contrib-python
+imutils
+sklearn
+tensorflow-addons
+matplotlib
+tensorflow-datasets
+pillow
+h5py
+pyyaml
+docopt
+google_images_download
+requests
+progressbar
