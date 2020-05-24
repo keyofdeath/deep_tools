@@ -5,7 +5,20 @@ import h5py
 
 
 class HDF5DatasetWriter:
-    def __init__(self, dims, outputPath, dataKey="images", bufSize=1000, overwrite=False):
+    def __init__(self, dims, outputPath, dataKey="images", bufSize=1000, overwrite=False, **kwargs):
+        """
+
+        :param dims:
+        :param outputPath:
+        :param dataKey:
+        :param bufSize:
+        :param overwrite:
+        :param kwargs: (dict)
+            All dtype can be found here: http://docs.h5py.org/en/stable/faq.html#faq
+            * image_dtype: (string) dtype of images default: "float"
+            * labels_dtype: (string) dtype of labels default: "int"
+
+        """
         # check to see if the output path exists, and if so, raise
         # an exception
         if os.path.exists(outputPath):
@@ -20,10 +33,12 @@ class HDF5DatasetWriter:
         # one to store the images/features and another to store the
         # class labels
         self.db = h5py.File(outputPath, "w")
+        dtype = kwargs.get("image_dtype", "float")
         self.data = self.db.create_dataset(dataKey, dims,
-                                           dtype="float")
+                                           dtype=dtype)
+        dtype = kwargs.get("labels_dtype", "int")
         self.labels = self.db.create_dataset("labels", (dims[0],),
-                                             dtype="int")
+                                             dtype=dtype)
 
         # store the buffer size, then initialize the buffer itself
         # along with the index into the datasets
