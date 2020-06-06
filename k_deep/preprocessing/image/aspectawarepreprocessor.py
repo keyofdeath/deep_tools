@@ -2,8 +2,10 @@
 import cv2
 import imutils
 
+from k_deep.preprocessing.preprocessing import Preprocessing
 
-class AspectAwarePreprocessor:
+
+class AspectAwarePreprocessor(Preprocessing):
     def __init__(self, width, height, inter=cv2.INTER_AREA):
         # store the target image width, height, and interpolation
         # method used when resizing

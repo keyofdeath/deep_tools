@@ -2,8 +2,10 @@
 import cv2
 import numpy as np
 
+from k_deep.preprocessing.preprocessing import Preprocessing
 
-class CropPreprocessor:
+
+class CropPreprocessor(Preprocessing):
     def __init__(self, width, height, horiz=True, inter=cv2.INTER_AREA):
         # store the target image width, height, whether or not
         # horizontal flips should be included, along with the

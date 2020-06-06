@@ -1,8 +1,10 @@
 # import the necessary packages
 import cv2
 
+from k_deep.preprocessing.preprocessing import Preprocessing
 
-class SimplePreprocessor:
+
+class ResizePreprocessor(Preprocessing):
     def __init__(self, width, height, inter=cv2.INTER_AREA):
         # store the target image width, height, and interpolation
         # method used when resizing

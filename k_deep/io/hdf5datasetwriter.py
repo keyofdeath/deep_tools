@@ -5,14 +5,14 @@ import h5py
 
 
 class HDF5DatasetWriter:
-    def __init__(self, dims, outputPath, dataKey="images", bufSize=1000, overwrite=False, **kwargs):
+    def __init__(self, dims, label_dims, output_path, data_key="images", buf_size=1000, overwrite=False, **kwargs):
         """
-
-        :param dims:
-        :param outputPath:
-        :param dataKey:
-        :param bufSize:
-        :param overwrite:
+        :param dims: (tuple) dims of the data to write first dim need to be length of data
+        :param label_dims: (int) dimention of labels
+        :param output_path: (string) path to save the h5 file
+        :param data_key: (string) Key to get images
+        :param buf_size:(int) Buffer size before save into the file
+        :param overwrite: (bool) Overwrite if file existe
         :param kwargs: (dict)
             All dtype can be found here: http://docs.h5py.org/en/stable/faq.html#faq
             * image_dtype: (string) dtype of images default: "float"
@@ -21,28 +21,28 @@ class HDF5DatasetWriter:
         """
         # check to see if the output path exists, and if so, raise
         # an exception
-        if os.path.exists(outputPath):
+        if os.path.exists(output_path):
             if not overwrite:
                 raise ValueError("The supplied `outputPath` already "
                                  "exists and cannot be overwritten. Manually delete "
-                                 "the file before continuing.", outputPath)
+                                 "the file before continuing.", output_path)
             else:
-                os.remove(outputPath)
+                os.remove(output_path)
 
         # open the HDF5 database for writing and create two datasets:
         # one to store the images/features and another to store the
         # class labels
-        self.db = h5py.File(outputPath, "w")
+        self.db = h5py.File(output_path, "w")
         dtype = kwargs.get("image_dtype", "float")
-        self.data = self.db.create_dataset(dataKey, dims,
+        self.data = self.db.create_dataset(data_key, dims,
                                            dtype=dtype)
         dtype = kwargs.get("labels_dtype", "int")
-        self.labels = self.db.create_dataset("labels", (dims[0],),
+        self.labels = self.db.create_dataset("labels", (dims[0], label_dims),
                                              dtype=dtype)
 
         # store the buffer size, then initialize the buffer itself
         # along with the index into the datasets
-        self.bufSize = bufSize
+        self.bufSize = buf_size
         self.buffer = {"data": [], "labels": []}
         self.idx = 0
 

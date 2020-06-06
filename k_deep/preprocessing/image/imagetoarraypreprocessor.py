@@ -1,8 +1,10 @@
 # import the necessary packages
 from tensorflow.keras.preprocessing.image import img_to_array
 
+from k_deep.preprocessing.preprocessing import Preprocessing
 
-class ImageToArrayPreprocessor:
+
+class ImageToArrayPreprocessor(Preprocessing):
     def __init__(self, dataFormat=None):
         # store the image data format
         self.dataFormat = dataFormat

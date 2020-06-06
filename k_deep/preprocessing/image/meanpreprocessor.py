@@ -1,8 +1,10 @@
 # import the necessary packages
 import cv2
 
+from k_deep.preprocessing.preprocessing import Preprocessing
 
-class MeanPreprocessor:
+
+class MeanPreprocessor(Preprocessing):
     def __init__(self, rMean, gMean, bMean):
         # store the Red, Green, and Blue channel averages across a
         # training set

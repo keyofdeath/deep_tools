@@ -1,8 +1,10 @@
 # import the necessary packages
 from sklearn.feature_extraction.image import extract_patches_2d
 
+from k_deep.preprocessing.preprocessing import Preprocessing
 
-class PatchPreprocessor:
+
+class PatchPreprocessor(Preprocessing):
     def __init__(self, width, height):
         # store the target width and height of the image
         self.width = width
