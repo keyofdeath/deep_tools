@@ -2,18 +2,16 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import absolute_import
-
-import logging.handlers
 import os
-
+import logging.handlers
 import tensorflow as tf
 
-from k_deep.utils.transformer_utils import scaled_dot_product_attention
+from k_deep.nn.functional import scaled_dot_product_attention
 
 PYTHON_LOGGER = logging.getLogger(__name__)
 if not os.path.exists("log"):
     os.mkdir("log")
-HDLR = logging.handlers.TimedRotatingFileHandler("log/multi_head_attention.log",
+HDLR = logging.handlers.TimedRotatingFileHandler("log/activation.log",
                                                  when="midnight", backupCount=60)
 STREAM_HDLR = logging.StreamHandler()
 FORMATTER = logging.Formatter("%(asctime)s %(filename)s [%(levelname)s] %(message)s")
@@ -29,6 +27,23 @@ FOLDER_ABSOLUTE_PATH = os.path.normpath(os.path.dirname(os.path.abspath(__file__
 
 class MultiHeadAttention(tf.keras.layers.Layer):
     """
+    Multi-head attention consists of four parts:
+        - Linear layers and split into heads.
+        - Scaled dot-product attention.
+        - Concatenation of heads.
+        - Final linear layer.
+    Each multi-head attention block gets three inputs; Q (query), K (key), V (value).
+    These are put through linear (Dense) layers and split up into multiple heads.
+
+    The scaled_dot_product_attention defined above is applied to each head (broadcasted for efficiency).
+    An appropriate mask must be used in the attention step.
+    The attention output for each head is then concatenated and put through a final Dense layer.
+
+    Instead of one single attention head, Q, K, and V are split into multiple heads because it allows the model
+    to jointly attend to information at different positions from different representational spaces.
+    After the split each head has a reduced dimensionality,
+    so the total computation cost is the same as a single head attention with full dimensionality.
+
     >>> temp_mha = MultiHeadAttention(d_model=512, num_heads=8)
     >>> y = tf.random.uniform((1, 60, 512))  # (batch_size, encoder_sequence, d_model)
     >>> out, attn = temp_mha(y, k=y, q=y, mask=None)
@@ -36,6 +51,10 @@ class MultiHeadAttention(tf.keras.layers.Layer):
     """
 
     def __init__(self, d_model, num_heads):
+        """
+        :param d_model: (int) the number of expected features in the input (required).
+        :param num_heads: (int) the number of heads in the multiheadattention models (required).
+        """
         super(MultiHeadAttention, self).__init__()
         self.num_heads = num_heads
         self.d_model = d_model
@@ -51,7 +70,8 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         self.dense = tf.keras.layers.Dense(d_model)
 
     def split_heads(self, x, batch_size):
-        """Split the last dimension into (num_heads, depth).
+        """
+        Split the last dimension into (num_heads, depth).
         Transpose the result such that the shape is (batch_size, num_heads, seq_len, depth)
         """
         x = tf.reshape(x, (batch_size, -1, self.num_heads, self.depth))

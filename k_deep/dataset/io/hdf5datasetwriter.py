@@ -29,7 +29,7 @@ class HDF5DatasetWriter:
             else:
                 os.remove(output_path)
 
-        # open the HDF5 database for writing and create two datasets:
+        # open the HDF5 database for writing and create two dataset:
         # one to store the images/features and another to store the
         # class labels
         self.db = h5py.File(output_path, "w")
@@ -41,7 +41,7 @@ class HDF5DatasetWriter:
                                              dtype=dtype)
 
         # store the buffer size, then initialize the buffer itself
-        # along with the index into the datasets
+        # along with the index into the dataset
         self.bufSize = buf_size
         self.buffer = {"data": [], "labels": []}
         self.idx = 0

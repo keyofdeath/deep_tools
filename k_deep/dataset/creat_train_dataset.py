@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelBinarizer, LabelEncoder
 from tensorflow.keras.utils import to_categorical
 
-from k_deep.datasets import DatasetLoader
+from k_deep.dataset import DatasetLoader
 from k_deep.preprocessing import ResizePreprocessor, ImageToArrayPreprocessor
 
 PYTHON_LOGGER = logging.getLogger(__name__)
