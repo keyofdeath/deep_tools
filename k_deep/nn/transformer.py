@@ -12,6 +12,7 @@ from k_deep.layers.transformer_decoder import TransformerDecoderLayer
 from k_deep.layers.transformer_encoder import TransformerEncoder
 
 from k_deep.nn.activation import MultiHeadAttention
+from k_deep.nn.functional import positional_encoding
 
 PYTHON_LOGGER = logging.getLogger(__name__)
 if not os.path.exists("log"):
@@ -65,27 +66,37 @@ class Transformer(tf.keras.layers.Layer):
 
 class TransformerEncoder(tf.keras.layers.Layer):
     """
+    The Encoder consists of:
+        1. Input Embedding
+        2. Positional Encoding
+        3. N TransformerEncoderLayer
+    The input is put through an embedding which is summed with the positional encoding.
+    The output of this summation is the input to the encoder layers.
+    The output of the encoder is the input to the decoder.
     >>> sample_encoder = TransformerEncoder(num_layers=2, d_model=512, num_heads=8, dff=2048, input_vocab_size=8500, maximum_position_encoding=10000)
     >>> temp_input = tf.random.uniform((64, 62), dtype=tf.int64, minval=0, maxval=200)
     >>> sample_encoder_output = sample_encoder(temp_input, training=False, mask=None)
-    >>> print (sample_encoder_output.shape)  # (batch_size, input_seq_len, d_model)
+    >>> print(sample_encoder_output.shape)  # (batch_size, input_seq_len, d_model)
     """
 
-    def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
-                 maximum_position_encoding, rate=0.1):
+    def __init__(self, num_layers, d_model, num_heads, dim_feedforward=2048, dropout=0.1, activation="relu"):
+        """
+        :param num_layers: (int) Number of TransformerEncoderLayer (required)
+        :param d_model: (int) the number of expected features in the input (required).
+        :param num_heads: (int) the number of heads in the multiheadattention models (required).
+        :param dim_feedforward: (int) the dimension of the feedforward network model (default=2048).
+        :param dropout: (double) the dropout value (default=0.1).
+        :param activation: (string) the activation function of intermediate layer, relu or gelu (default=relu).
+        """
         super(TransformerEncoder, self).__init__()
 
         self.d_model = d_model
         self.num_layers = num_layers
 
-        self.embedding = tf.keras.layers.Embedding(input_vocab_size, d_model)
-        self.pos_encoding = positional_encoding(maximum_position_encoding,
-                                                self.d_model)
-
-        self.enc_layers = [TransformerEncoderLayer(d_model, num_heads, dff, rate)
+        self.enc_layers = [TransformerEncoderLayer(d_model, num_heads, dim_feedforward, dropout, activation)
                            for _ in range(num_layers)]
 
-        self.dropout = tf.keras.layers.Dropout(rate)
+        self.dropout = tf.keras.layers.Dropout(dropout)
 
     def call(self, x, training, mask):
         seq_len = tf.shape(x)[1]
@@ -154,25 +165,49 @@ class TransformerDecoder(tf.keras.layers.Layer):
 
 class TransformerEncoderLayer(tf.keras.layers.Layer):
     """
+    Each encoder layer consists of sublayers:
+        1. Multi-head attention (with padding mask)
+        2. Point wise feed forward networks.
+
+    Each of these sublayers has a residual connection around it followed by a layer normalization.
+    Residual connections help in avoiding the vanishing gradient problem in deep networks.
+
+    The output of each sublayer is LayerNorm(x + Sublayer(x)).
+    The normalization is done on the d_model (last) axis. There are N encoder layers in the transformer.
     >>> sample_encoder_layer = TransformerEncoderLayer(512, 8, 2048)
-    >>> sample_encoder_layer_output = sample_encoder_layer(tf.random.uniform((64, 43, 512)), False, None)
+    >>> x = tf.random.uniform((64, 43, 512))
+    >>> sample_encoder_layer_output = sample_encoder_layer(x, False, None)
     >>> sample_encoder_layer_output.shape  # (batch_size, input_seq_len, d_model)
     """
 
-    def __init__(self, d_model, num_heads, dff, rate=0.1):
+    def __init__(self, d_model, num_heads, dim_feedforward=2048, dropout=0.1, activation="relu"):
+        """
+        :param d_model: (int) the number of expected features in the input (required).
+        :param num_heads: (int) the number of heads in the multiheadattention models (required).
+        :param dim_feedforward: (int) the dimension of the feedforward network model (default=2048).
+        :param dropout: (double) the dropout value (default=0.1).
+        :param activation: (string) the activation function of intermediate layer, relu or gelu (default=relu).
+        """
         super(TransformerEncoderLayer, self).__init__()
 
         self.mha = MultiHeadAttention(d_model, num_heads)
 
-        self.ffn = point_wise_feed_forward_network(d_model, dff)
+        self.ffn = point_wise_feed_forward_network(d_model, dim_feedforward, dropout, activation)
 
         self.layernorm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.layernorm2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
 
-        self.dropout1 = tf.keras.layers.Dropout(rate)
-        self.dropout2 = tf.keras.layers.Dropout(rate)
+        self.dropout1 = tf.keras.layers.Dropout(dropout)
+        self.dropout2 = tf.keras.layers.Dropout(dropout)
 
-    def call(self, x, training, mask):
+    def call(self, x, training, mask=None):
+        """
+        :param x: (Tensor) the sequence to the encoder layer (required).
+        :param training: (bool) used for dropout layers indicating whether the layer should behave in
+                    training mode (adding dropout) or in inference mode (doing nothing).
+        :param mask: the mask for the src sequence (optional).
+        :return:
+        """
         attn_output, _ = self.mha(x, x, x, mask)  # (batch_size, input_seq_len, d_model)
         attn_output = self.dropout1(attn_output, training=training)
         out1 = self.layernorm1(x + attn_output)  # (batch_size, input_seq_len, d_model)
@@ -186,17 +221,27 @@ class TransformerEncoderLayer(tf.keras.layers.Layer):
 
 class TransformerDecoderLayer(tf.keras.layers.Layer):
     """
-    TransformerDecoderLayer is made up of self-attn, multi-head-attn and feedforward network.
-    This standard decoder layer is based on the paper "Attention Is All You Need".
-    Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez,
-    Lukasz Kaiser, and Illia Polosukhin. 2017. Attention is all you need. In Advances in
-    Neural Information Processing Systems, pages 6000-6010. Users may modify or implement
-    in a different way during application.
-    >>> sample_encoder_layer = TransformerDecoderLayer(512, 8)
-    >>> sample_encoder_layer_output = sample_encoder_layer(tf.random.uniform((64, 43, 512)), False, None)
-    >>> sample_decoder_layer = TransformerDecoder(512, 8, 2048)
-    >>> sample_decoder_layer_output, _, _ = sample_decoder_layer(tf.random.uniform((64, 50, 512)), sample_encoder_layer_output, False, None, None)
-    >>> sample_decoder_layer_output.shape  # (batch_size, target_seq_len, d_model)
+    Each decoder layer consists of sublayers:
+        1. Masked multi-head attention (with look ahead mask and padding mask)
+        2. Multi-head attention (with padding mask).
+            V (value) and K (key) receive the encoder output as inputs.
+            Q (query) receives the output from the masked multi-head attention sublayer.
+        3. Point wise feed forward networks
+
+        Each of these sublayers has a residual connection around it followed by a layer normalization.
+        The output of each sublayer is LayerNorm(x + Sublayer(x)).
+        The normalization is done on the d_model (last) axis.
+
+        There are N decoder layers in the transformer.
+    >>> # Encoder part
+    >>> sample_encoder_layer = TransformerEncoderLayer(512, 8, 2048)
+    >>> x = tf.random.uniform((64, 43, 512))
+    >>> sample_encoder_layer_output = sample_encoder_layer(x, False, None) # (batch_size, input_seq_len, d_model)
+    >>> # Decoder part
+    >>> sample_encoder_layer = TransformerDecoderLayer(512, 8, 2048)
+    >>> x = tf.random.uniform((64, 43, 512)) # shape 64, 43, 512
+    >>> sample_decoder_layer_output, _, _ = sample_encoder_layer(x, sample_encoder_layer_output, False, None, None)
+    >>> sample_decoder_layer_output.shape # (batch_size, target_seq_len, d_model)
     """
 
     def __init__(self, d_model, num_heads, dim_feedforward=2048, dropout=0.1, activation="relu"):
@@ -222,7 +267,16 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
         self.dropout2 = tf.keras.layers.Dropout(dropout)
         self.dropout3 = tf.keras.layers.Dropout(dropout)
 
-    def call(self, x, enc_output, training, look_ahead_mask, padding_mask):
+    def call(self, x, encoder_output, training, look_ahead_mask=None, padding_mask=None):
+        """
+        :param x: (Tensor) the sequence to the decoder layer (required).
+        :param encoder_output: (Tensor) the sequence from the last layer of the encoder (required).
+        :param training: (bool) used for dropout layers indicating whether the layer should behave in
+            training mode (adding dropout) or in inference mode (doing nothing).
+        :param look_ahead_mask: the mask for the x sequence (optional).
+        :param padding_mask: the mask for the encoder_output sequence (optional).
+        :return:
+        """
         # enc_output.shape == (batch_size, input_seq_len, d_model)
 
         attn1, attn_weights_block1 = self.mha1(x, x, x, look_ahead_mask)  # (batch_size, target_seq_len, d_model)
@@ -230,7 +284,7 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
         out1 = self.layernorm1(attn1 + x)
 
         attn2, attn_weights_block2 = self.mha2(
-            enc_output, enc_output, out1, padding_mask)  # (batch_size, target_seq_len, d_model)
+            encoder_output, encoder_output, out1, padding_mask)  # (batch_size, target_seq_len, d_model)
         attn2 = self.dropout2(attn2, training=training)
         out2 = self.layernorm2(attn2 + out1)  # (batch_size, target_seq_len, d_model)
 
