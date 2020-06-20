@@ -29,18 +29,18 @@ FOLDER_ABSOLUTE_PATH = os.path.normpath(os.path.dirname(os.path.abspath(__file__
 
 class Transformer(tf.keras.layers.Layer):
     """
-    >>> sample_transformer = Transformer(num_layers=2, d_model=512, num_heads=8, dff=2048, input_vocab_size=8500, target_vocab_size=8000, pe_input=10000, pe_target=6000)
-    >>> temp_input = tf.random.uniform((64, 38), dtype=tf.int64, minval=0, maxval=200)
-    >>> temp_target = tf.random.uniform((64, 36), dtype=tf.int64, minval=0, maxval=200)
-    >>> fn_out, _ = sample_transformer(temp_input, temp_target, training=False, enc_padding_mask=None, look_ahead_mask=None, dec_padding_mask=None)
-    >>> fn_out.shape  # (batch_size, tar_seq_len, target_vocab_size)
+    A transformer model.
+    The architecture is based on the paper "Attention Is All You Need".
+    Ashish Vaswani, Noam Shazeer,Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Lukasz Kaiser, and
+    Illia Polosukhin. 2017. Attention is all you need. In Advances in Neural Information
+    Processing Systems, pages 6000-6010. Users can build the BERT(https://arxiv.org/abs/1810.04805)
+    model with corresponding parameters.
     """
 
     def __init__(self, num_encoder_layers, num_decoder_layers,
                  d_model, num_heads, dim_feedforward=2048, dropout=0.1, activation="relu",
                  custom_encoder=None, custom_decoder=None):
         """
-
         :param num_encoder_layers: (int) Number of TransformerEncoderLayer (required)
         :param num_decoder_layers: (int) Number of TransformerDecoderLayer (required)
         :param d_model: (int) the number of expected features in the input (required).
