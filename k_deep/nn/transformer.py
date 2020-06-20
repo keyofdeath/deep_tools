@@ -66,20 +66,14 @@ class Transformer(tf.keras.layers.Layer):
 
 class TransformerEncoder(tf.keras.layers.Layer):
     """
-    The Encoder consists of:
-        1. Input Embedding
-        2. Positional Encoding
-        3. N TransformerEncoderLayer
-    The input is put through an embedding which is summed with the positional encoding.
-    The output of this summation is the input to the encoder layers.
-    The output of the encoder is the input to the decoder.
+    TransformerEncoder is a stack of N encoder layers
     >>> sample_encoder = TransformerEncoder(num_layers=2, d_model=512, num_heads=8, dff=2048, input_vocab_size=8500, maximum_position_encoding=10000)
     >>> temp_input = tf.random.uniform((64, 62), dtype=tf.int64, minval=0, maxval=200)
     >>> sample_encoder_output = sample_encoder(temp_input, training=False, mask=None)
     >>> print(sample_encoder_output.shape)  # (batch_size, input_seq_len, d_model)
     """
 
-    def __init__(self, num_layers, d_model, num_heads, dim_feedforward=2048, dropout=0.1, activation="relu"):
+    def __init__(self, num_layers, d_model, num_heads, dim_feedforward=2048, dropout=0.1, activation="relu", norm=None):
         """
         :param num_layers: (int) Number of TransformerEncoderLayer (required)
         :param d_model: (int) the number of expected features in the input (required).
@@ -87,6 +81,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
         :param dim_feedforward: (int) the dimension of the feedforward network model (default=2048).
         :param dropout: (double) the dropout value (default=0.1).
         :param activation: (string) the activation function of intermediate layer, relu or gelu (default=relu).
+        :param norm: (layer) the layer normalization component (optional).
         """
         super(TransformerEncoder, self).__init__()
 
@@ -99,19 +94,14 @@ class TransformerEncoder(tf.keras.layers.Layer):
         self.dropout = tf.keras.layers.Dropout(dropout)
 
     def call(self, x, training, mask):
-        seq_len = tf.shape(x)[1]
-
-        # adding embedding and position encoding.
-        x = self.embedding(x)  # (batch_size, input_seq_len, d_model)
-        x *= tf.math.sqrt(tf.cast(self.d_model, tf.float32))
-        x += self.pos_encoding[:, :seq_len, :]
-
-        x = self.dropout(x, training=training)
-
+        out = x
         for i in range(self.num_layers):
-            x = self.enc_layers[i](x, training, mask)
+            out = self.enc_layers[i](out, training, mask)
 
-        return x  # (batch_size, input_seq_len, d_model)
+        if self.norm is not None:
+            out = self.norm(out)
+
+        return out  # (batch_size, input_seq_len, d_model)
 
 
 class TransformerDecoder(tf.keras.layers.Layer):
