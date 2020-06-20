@@ -24,17 +24,4 @@ PYTHON_LOGGER.setLevel(logging.DEBUG)
 FOLDER_ABSOLUTE_PATH = os.path.normpath(os.path.dirname(os.path.abspath(__file__)))
 
 
-class Generator:
-
-    def __iter__(self):
-        for i in range(10):
-            yield i
-
-    def __next__(self):
-        return next(self.__iter__())
-
-g = Generator()
-print(next(g))
-for v in Generator():
-    print(v)
-
+arrondi = lambda a: int(a) + 1 if float(a) - int(a) > 0.5 else int(a)
