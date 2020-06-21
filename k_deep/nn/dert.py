@@ -26,13 +26,16 @@ FOLDER_ABSOLUTE_PATH = os.path.normpath(os.path.dirname(os.path.abspath(__file__
 
 class Dert(tf.keras.layers.Layer):
 
-    def __init__(self, backbone=tf.keras.applications.ResNet50(weights="imagenet", include_top=False),
-                 backbone_preprocess=tf.keras.applications.imagenet_utils.preprocess_input):
+    def __init__(self, num_classes,
+                 backbone=tf.keras.applications.ResNet50(weights="imagenet", include_top=False),
+                 backbone_preprocess=tf.keras.applications.imagenet_utils.preprocess_input,
+                 hidden_dim=256):
         super().__init__(Dert, self)
         self.backbone = backbone
         self.backbone_preprocess = backbone_preprocess
 
-        self.conv = tf.keras.layers.Conv2D(2048, 1,)
+        self.conv = tf.keras.layers.Conv2D(hidden_dim, 1, padding="same",
+                                           input_shape=(None, None, self.backbone.output_shape[-1]))
 
     def call(self, x, **kwargs):
         pass
