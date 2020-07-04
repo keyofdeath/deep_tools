@@ -76,11 +76,13 @@ class Dert(tf.keras.layers.Layer):
         # construct positional encodings
         H, W, _ = h.shape
 
+        expand_col = tf.expand_dims(self.col_embed, 0)
+        expand_row = tf.expand_dims(self.row_embed, 1)
         # TODO
         """
         pos = torch.cat([
             self.col_embed[:W].unsqueeze(0).repeat(H, 1, 1),
-            self.row_embed[:H].unsqueeze(1).repeat(1, W, 1),
+            self.row_embed[:H].unsqueeze(1).repeat(1, W, 1),start
         ], dim=-1).flatten(0, 1).unsqueeze(1)
 
         # propagate through the transformer
