@@ -2,7 +2,7 @@
 import cv2
 import imutils
 
-from k_deep.preprocessing.preprocessing import Preprocessing
+from k_deep.dataset.preprocessing import Preprocessing
 
 
 class AspectAwarePreprocessor(Preprocessing):

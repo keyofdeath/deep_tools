@@ -1,7 +1,7 @@
 # import the necessary packages
 from sklearn.feature_extraction.image import extract_patches_2d
 
-from k_deep.preprocessing.preprocessing import Preprocessing
+from k_deep.dataset.preprocessing import Preprocessing
 
 
 class PatchPreprocessor(Preprocessing):

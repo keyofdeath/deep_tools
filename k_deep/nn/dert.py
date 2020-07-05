@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import absolute_import
-import os
+
 import logging.handlers
+import os
 
 import tensorflow as tf
 
@@ -62,7 +63,6 @@ class Dert(tf.keras.layers.Layer):
         self.concatenate = tf.keras.layers.Concatenate()
 
     def call(self, inputs, **kwargs):
-
         # Apply preprocess function
         if self.backbone_preprocess is not None:
             inputs = self.backbone_preprocess(inputs)

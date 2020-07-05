@@ -1,7 +1,7 @@
 # import the necessary packages
 from tensorflow.keras.preprocessing.image import img_to_array
 
-from k_deep.preprocessing.preprocessing import Preprocessing
+from k_deep.dataset.preprocessing import Preprocessing
 
 
 class ImageToArrayPreprocessor(Preprocessing):

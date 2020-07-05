@@ -12,7 +12,7 @@ from sklearn.preprocessing import LabelBinarizer, LabelEncoder
 from tensorflow.keras.utils import to_categorical
 
 from k_deep.dataset import DatasetLoader
-from k_deep.preprocessing import ResizePreprocessor, ImageToArrayPreprocessor
+from .preprocessing.image import ResizePreprocessor, ImageToArrayPreprocessor
 
 PYTHON_LOGGER = logging.getLogger(__name__)
 if not os.path.exists("log"):
