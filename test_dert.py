@@ -4,6 +4,8 @@
 from __future__ import absolute_import
 import os
 import logging.handlers
+
+import numpy as np
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.preprocessing.image import load_img
 
@@ -27,4 +29,7 @@ FOLDER_ABSOLUTE_PATH = os.path.normpath(os.path.dirname(os.path.abspath(__file__
 
 dert = Dert(91, Transformer(6, 6, 256, 8))
 
-load_img("logo.png")
+img = load_img("logo.png")
+img = img_to_array(img)
+img = np.expand_dims(img, axis=0)
+dert(img)

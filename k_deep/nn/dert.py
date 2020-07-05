@@ -67,8 +67,10 @@ class Dert(tf.keras.layers.Layer):
         if self.backbone_preprocess is not None:
             inputs = self.backbone_preprocess(inputs)
 
+        print("b call")
         # propagate inputs through backbone model and get output features
         x = self.backbone(inputs)
+        print("e call")
 
         # convert from 2048 to 256 feature planes for the transformer
         h = self.conv(x)
