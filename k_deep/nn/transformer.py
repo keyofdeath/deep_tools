@@ -66,17 +66,30 @@ class Transformer(tf.keras.layers.Layer):
             self.decoder = TransformerDecoder(num_decoder_layers, d_model, num_heads, dim_feedforward, dropout,
                                               activation, decoder_norm)
 
-    def call(self, inp, tar, training, enc_padding_mask, look_ahead_mask, dec_padding_mask):
+    def call(self, inp, tar, training, enc_padding_mask=None, look_ahead_mask=None, dec_padding_mask=None):
         """
 
         :param inp: (Tensor) the sequence to the encoder layer (required).
-        :param tar: (Tensor) the sequence to the decoder layer (required).
+            Shape should be: (batch size, source sequence length, feature number)
+
+        :param tar: (Tensor) the target sequence send to the decoder layer (required).
+            Shape should be: (batch size, target sequence length, feature number)
+
         :param training: (bool) used for dropout layers indicating whether the layer should behave in
             training mode (adding dropout) or in inference mode (doing nothing).
+
         :param enc_padding_mask: the mask for the inp sequence (optional).
         :param look_ahead_mask: the mask for the tar sequence (optional).
         :param dec_padding_mask: the mask for the encoder_output sequence second MultiHeadAttention (optional).
-        :return:
+        :return: (tuple) decoder output, Attention weights
+            Attention weights: (dict) format
+                {
+                    'decoder_layer<X>block1': attention_weights softmax result
+                        get from scaled_dot_product_attention of the block 1 decoder layer
+                    'decoder_layer<X>block2': attention_weights softmax result
+                        get from scaled_dot_product_attention of the block 2 decoder layer
+                }
+            Where X is the decoder layer number
         """
         # (batch_size, inp_seq_len, d_model)
         enc_output = self.encoder(inp, training, enc_padding_mask)
@@ -124,6 +137,9 @@ class TransformerEncoder(tf.keras.layers.Layer):
                     training mode (adding dropout) or in inference mode (doing nothing).
         :param mask: the mask for the x sequence (optional).
         :return:
+
+        Shape:
+            see the docs in Transformer class.
         """
         out = x
         for i in range(self.num_layers):
@@ -177,13 +193,24 @@ class TransformerDecoder(tf.keras.layers.Layer):
 
     def call(self, x, encoder_output, training, look_ahead_mask=None, padding_mask=None):
         """
-        :param x: (Tensor) the sequence to the decoder layer (required).
+        :param x: (Tensor) Target sequence, the sequence to the decoder layer (required).
         :param encoder_output: (Tensor) the sequence from the last layer of the encoder (required).
         :param training: (bool) used for dropout layers indicating whether the layer should behave in
             training mode (adding dropout) or in inference mode (doing nothing).
         :param look_ahead_mask: the mask for the x sequence (optional).
         :param padding_mask: the mask for the encoder_output sequence second MultiHeadAttention (optional).
-        :return:
+        :return: (tuple) decoder output, Attention weights
+            Attention weights: (dict) format
+                {
+                    'decoder_layer<X>block1': attention_weights softmax result
+                        get from scaled_dot_product_attention of the block 1 decoder layer
+                    'decoder_layer<X>block2': attention_weights softmax result
+                        get from scaled_dot_product_attention of the block 2 decoder layer
+                }
+            Where X is the decoder layer number
+
+        Shape:
+            see the docs in Transformer class.
         """
         out = x
         attention_weights = {}
@@ -246,6 +273,9 @@ class TransformerEncoderLayer(tf.keras.layers.Layer):
                     training mode (adding dropout) or in inference mode (doing nothing).
         :param mask: the mask for the x sequence (optional).
         :return:
+
+        Shape:
+            see the docs in Transformer class.
         """
         attn_output, _ = self.mha(x, x, x, mask)  # (batch_size, input_seq_len, d_model)
         attn_output = self.dropout1(attn_output, training=training)
@@ -310,13 +340,16 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
 
     def call(self, x, encoder_output, training, look_ahead_mask=None, padding_mask=None):
         """
-        :param x: (Tensor) the sequence to the decoder layer (required).
+        :param x: (Tensor) Target sequence shape should be (batch_size, seq length, d_model) (required).
         :param encoder_output: (Tensor) the sequence from the last layer of the encoder (required).
         :param training: (bool) used for dropout layers indicating whether the layer should behave in
             training mode (adding dropout) or in inference mode (doing nothing).
         :param look_ahead_mask: the mask for the x sequence (optional).
         :param padding_mask: the mask for the encoder_output sequence second MultiHeadAttention (optional).
-        :return:
+        :return: (tuple) decoder layer output, Attention weights block 1, Attention weights block 2
+
+        Shape:
+            see the docs in Transformer class.
         """
         # enc_output.shape == (batch_size, input_seq_len, d_model)
 

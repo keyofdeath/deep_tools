@@ -60,7 +60,7 @@ def positional_encoding(position, d_model):
     return tf.cast(pos_encoding, dtype=tf.float32)
 
 
-def scaled_dot_product_attention(q, k, v, mask):
+def scaled_dot_product_attention(q, k, v, mask=None):
     """
     Calculate the attention weights.
     q, k, v must have matching leading dimensions.
@@ -72,7 +72,7 @@ def scaled_dot_product_attention(q, k, v, mask):
     :param k: key shape == (..., seq_len_k, depth)
     :param v: value shape == (..., seq_len_v, depth_v)
     :param mask: Float tensor with shape broadcastable to (..., seq_len_q, seq_len_k). Defaults to None.
-    :return: output, attention_weights
+    :return: (tuple) output, attention_weights softmax result
     """
 
     matmul_qk = tf.matmul(q, k, transpose_b=True)  # (..., seq_len_q, seq_len_k)

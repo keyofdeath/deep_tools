@@ -35,6 +35,9 @@ class Dert(tf.keras.layers.Layer):
                  backbone_preprocess=tf.keras.applications.imagenet_utils.preprocess_input,
                  hidden_dim=256):
         super(Dert, self).__init__()
+
+        self.hidden_dim = hidden_dim
+
         self.backbone = backbone
         self.backbone_preprocess = backbone_preprocess
 
@@ -53,6 +56,8 @@ class Dert(tf.keras.layers.Layer):
 
         # output positional encodings (object queries)
         self.query_pos = tf.Variable(tf.random.uniform((100, hidden_dim)))
+        # Shape 1, 100, hidden_dim
+        self.query_pos = tf.expand_dims(self.query_pos, 0)
 
         # spatial positional encodings
         # note that in baseline DETR we use sine positional encodings
@@ -63,7 +68,7 @@ class Dert(tf.keras.layers.Layer):
         # for col_embed & row_embed concatenation
         self.concatenate = tf.keras.layers.Concatenate()
 
-    def call(self, inputs):
+    def call(self, inputs, training=False):
         # Apply preprocess function
         if self.backbone_preprocess is not None:
             inputs = self.backbone_preprocess(inputs)
@@ -91,18 +96,13 @@ class Dert(tf.keras.layers.Layer):
 
         # Concat this to array to have (H, W, hidden_dim) array
         pos = tf.concat([tile_expand_col, tile_expand_row], -1)
-        # TODO flatten
-        """
-        pos = torch.cat([
-            self.col_embed[:W].unsqueeze(0).repeat(H, 1, 1),
-            self.row_embed[:H].unsqueeze(1).repeat(1, W, 1),start
-        ], dim=-1).flatten(0, 1).unsqueeze(1)
+        flatten_pos = tf.reshape(pos, (H*W, self.hidden_dim))
+        # Set position to shape 1, H*W, hidden_dim
+        flatten_pos = tf.expand_dims(flatten_pos, 0)
 
-        # propagate through the transformer
-        h = self.transformer(pos + 0.1 * h.flatten(2).permute(2, 0, 1),
-                             self.query_pos.unsqueeze(1)).transpose(0, 1)
+        # shape: (batch, H*W, features). Need to be the same hase the query pos
+        flatten_features = tf.reshape(h, (batch, H*W, self.hidden_dim))
 
-        # finally project transformer outputs to class labels and bounding boxes
-        return {'pred_logits': self.linear_class(h),
-                'pred_boxes': self.linear_bbox(h).sigmoid()}
-        """
+        # Get attention sequence shape same has query pos (batch, 100, hidden_dim)
+        h, attention_weights = self.transformer(flatten_pos + 0.1 * flatten_features, self.query_pos, training)
+        print(h.shape)
