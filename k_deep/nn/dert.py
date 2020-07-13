@@ -34,7 +34,7 @@ class Dert(tf.keras.layers.Layer):
                  backbone=tf.keras.applications.ResNet50(weights="imagenet", include_top=False),
                  backbone_preprocess=tf.keras.applications.imagenet_utils.preprocess_input,
                  hidden_dim=256):
-        super().__init__(Dert, self)
+        super(Dert, self).__init__()
         self.backbone = backbone
         self.backbone_preprocess = backbone_preprocess
 
@@ -56,13 +56,14 @@ class Dert(tf.keras.layers.Layer):
 
         # spatial positional encodings
         # note that in baseline DETR we use sine positional encodings
+        # shape = (50, hidden_dim // 2)
         self.row_embed = tf.Variable(tf.random.uniform((50, hidden_dim // 2)))
         self.col_embed = tf.Variable(tf.random.uniform((50, hidden_dim // 2)))
 
         # for col_embed & row_embed concatenation
         self.concatenate = tf.keras.layers.Concatenate()
 
-    def call(self, inputs, **kwargs):
+    def call(self, inputs):
         # Apply preprocess function
         if self.backbone_preprocess is not None:
             inputs = self.backbone_preprocess(inputs)
@@ -76,11 +77,21 @@ class Dert(tf.keras.layers.Layer):
         h = self.conv(x)
 
         # construct positional encodings
-        H, W, _ = h.shape
+        batch, H, W, features_size = h.shape
 
-        expand_col = tf.expand_dims(self.col_embed, 0)
-        expand_row = tf.expand_dims(self.row_embed, 1)
-        # TODO
+        # Extract sub embed size of W, H to creat an array shape of (H, W, hidden_dim // 2)
+        # shape = 1, W, hidden_dim // 2
+        expand_col = tf.expand_dims(self.col_embed[:W], 0)
+        # shape = H, 1, hidden_dim // 2
+        expand_row = tf.expand_dims(self.row_embed[:H], 1)
+
+        # Now we creat 2 array of shape (H, W, hidden_dim // 2)
+        tile_expand_col = tf.tile(expand_col, (H, 1, 1))
+        tile_expand_row = tf.tile(expand_row, (1, W, 1))
+
+        # Concat this to array to have (H, W, hidden_dim) array
+        pos = tf.concat([tile_expand_col, tile_expand_row], -1)
+        # TODO flatten
         """
         pos = torch.cat([
             self.col_embed[:W].unsqueeze(0).repeat(H, 1, 1),
