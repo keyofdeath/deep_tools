@@ -57,7 +57,7 @@ class Dert(tf.keras.layers.Layer):
         # output positional encodings (object queries)
         self.query_pos = tf.Variable(tf.random.uniform((100, hidden_dim)))
         # Shape 1, 100, hidden_dim
-        self.query_pos = tf.expand_dims(self.query_pos, 0)
+        self.query_pos_single_batch = tf.expand_dims(self.query_pos, 0)
 
         # spatial positional encodings
         # note that in baseline DETR we use sine positional encodings
@@ -68,12 +68,37 @@ class Dert(tf.keras.layers.Layer):
         # for col_embed & row_embed concatenation
         self.concatenate = tf.keras.layers.Concatenate()
 
+    @staticmethod
+    def _box_cxcywh_to_xyxy(x):
+        """
+        Change predict boxes position representation
+        :param x: (number of boxes, 4) predict boxes for one image
+        :return: (number of boxes, 4)
+        """
+        x_c, y_c, w, h = tf.unstack(x, axis=1)
+        b = [(x_c - 0.5 * w), (y_c - 0.5 * h),
+             (x_c + 0.5 * w), (y_c + 0.5 * h)]
+        return tf.stack(b, axis=1)
+
+    def _rescale_bboxes(self, out_bbox, img_width, img_height):
+        """
+        Rescale predict boxes at the image size
+        :param out_bbox: (number of boxes, 4) predict boxes for one image
+        :param img_width: (int)
+        :param img_height: (int)
+        :return: (number of boxes, 4) x, y top left. x, y bottom rigth
+        """
+        b = self._box_cxcywh_to_xyxy(out_bbox)
+        return b * tf.constant([img_width, img_height, img_width, img_height], dtype=tf.float32)
+
     def call(self, inputs, detection_ceil=0.7, training=False):
         """
 
         :param inputs: (batch size, image array, channel last)
+            Note the size of all images need to be the same
         :param detection_ceil: (float) proba detection ceil
-        :param training:
+        :param training: (bool) used for dropout layers indicating whether the layer should behave in
+            training mode (adding dropout) or in inference mode (doing nothing).
         :return: (dict) Dert prediction output and Transformer attention weights. Dict format
                 {
                     'decoder_layer<X>block1': attention_weights softmax result
@@ -81,10 +106,17 @@ class Dert(tf.keras.layers.Layer):
                     'decoder_layer<X>block2': attention_weights softmax result
                         get from scaled_dot_product_attention of the block 2 decoder layer
 
-                    "pred_logits": prediction labels shape is (batch size, seq length, number of classes + 1),
-                    "pred_boxes": bouding box prediction shape is (batch size, seq length, 4)
+                    "pred_logits": prediction labels probability shape is (batch size, number of boxes, number of classes + 1),
+                    "pred_boxes": bouding box prediction shape is (batch size, number of boxes, 4),
+                    "rescale_boxes": (list) shape (batch size, number of boxes, 4)
+                        rescale boxes to the image size with confidence upper than detection_ceil (x, y top left. x, y bottom rigth)
+                    "labels_confidence": (list) shape (batch size, number of boxes, number of classes)
+                        Predict labels with confidence upper than detection_ceil
                 }
         """
+
+        # Extract image features with the pre train CNN model
+
         # Apply preprocess function
         if self.backbone_preprocess is not None:
             inputs = self.backbone_preprocess(inputs)
@@ -97,6 +129,11 @@ class Dert(tf.keras.layers.Layer):
 
         # construct positional encodings
         batch, H, W, features_size = h.shape
+
+        # shape: (batch, H*W, features). Need to be the same hase the query pos
+        flatten_features = tf.reshape(h, (batch, H * W, self.hidden_dim))
+
+        # Creat the positional encoding
 
         # Extract sub embed size of W, H to creat an array shape of (H, W, hidden_dim // 2)
         # shape = 1, W, hidden_dim // 2
@@ -114,26 +151,36 @@ class Dert(tf.keras.layers.Layer):
         # Set position to shape 1, H*W, hidden_dim
         flatten_pos = tf.expand_dims(flatten_pos, 0)
 
-        # shape: (batch, H*W, features). Need to be the same hase the query pos
-        flatten_features = tf.reshape(h, (batch, H * W, self.hidden_dim))
+        # Pass throw transformer and 2 dense layers
+
+        # Creat the target the good quantity for the target sequence shape
+        query_pos = tf.concat([tf.identity(self.query_pos_single_batch) for _ in range(batch)], axis=0)
 
         # Get attention sequence shape same has query pos (batch, 100, hidden_dim)
-        h, attention_weights = self.transformer(flatten_pos + 0.1 * flatten_features, self.query_pos, training)
+        decoder_out, attention_weights = self.transformer(flatten_pos + 0.1 * flatten_features, query_pos, training)
 
-        pred_logits = self.linear_class(h)
-        pred_boxes = self.linear_bbox(h)
+        pred_logits = self.linear_class(decoder_out)
+        pred_boxes = self.linear_bbox(decoder_out)
 
-        # remove the last fake classe and keep only predictions with 0.7+ confidence
+        # Creat boxes
+
+        # remove the last fake classe and keep only predictions with 0.7+ confidence for each images batch
         probas = pred_logits[:, :, :-1]
+        bool_keep_boxes = tf.reduce_max(probas, -1) > detection_ceil
 
-        keep = tf.reduce_max(probas, -1) > detection_ceil
-        for img_index, proba_keep in enumerate(keep):
-            keep_bbox = tf.boolean_mask(pred_boxes[img_index], proba_keep)
-            # TODO rescale_bboxes
+        rescale_boxes = []
+        labels_confidence = []
+
+        for img_index, bool_keep_box in enumerate(bool_keep_boxes):
+            keep_box = tf.boolean_mask(pred_boxes[img_index], bool_keep_box)
+            if len(keep_box) > 0:
+                labels_confidence.append(tf.boolean_mask(probas[img_index], bool_keep_box))
+                rescale_boxes.append(self._rescale_bboxes(keep_box, W, H))
+
         attention_weights.update({
-            "pred_logits": pred_logits,
+            "pred_logits": probas,
             "pred_boxes": pred_boxes,
-
+            "rescale_boxes": rescale_boxes,
+            "labels_confidence": labels_confidence
         })
-
         return attention_weights

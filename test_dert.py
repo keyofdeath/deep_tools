@@ -29,7 +29,10 @@ FOLDER_ABSOLUTE_PATH = os.path.normpath(os.path.dirname(os.path.abspath(__file__
 
 dert = Dert(91, Transformer(6, 6, 256, 8))
 
-img = load_img("logo.jpg", target_size=(224, 224))
-img = img_to_array(img)
-img = np.expand_dims(img, axis=0)
-dert(img)
+batch_images = []
+
+batch_images.append(np.expand_dims(img_to_array(load_img("test1.jpg", target_size=(224, 224))), axis=0))
+batch_images.append(np.expand_dims(img_to_array(load_img("test2.png", target_size=(224, 224))), axis=0))
+batch_images = np.vstack(batch_images)
+output = dert(batch_images)
+
