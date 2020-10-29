@@ -8,7 +8,7 @@ import os
 
 import tensorflow as tf
 
-from k_deep.nn.activation import MultiHeadAttention
+from deep_tools.nn.activation import MultiHeadAttention
 
 PYTHON_LOGGER = logging.getLogger(__name__)
 if not os.path.exists("log"):

@@ -9,7 +9,7 @@ import numpy as np
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.preprocessing.image import load_img
 
-from k_deep.nn import Dert, Transformer
+from deep_tools.nn import Dert, Transformer
 
 PYTHON_LOGGER = logging.getLogger(__name__)
 if not os.path.exists("log"):

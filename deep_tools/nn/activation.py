@@ -6,7 +6,7 @@ import os
 import logging.handlers
 import tensorflow as tf
 
-from k_deep.nn.functional import scaled_dot_product_attention
+from deep_tools.nn.functional import scaled_dot_product_attention
 
 PYTHON_LOGGER = logging.getLogger(__name__)
 if not os.path.exists("log"):

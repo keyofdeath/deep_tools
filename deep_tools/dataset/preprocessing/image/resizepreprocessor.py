@@ -1,7 +1,7 @@
 # import the necessary packages
 import cv2
 
-from k_deep.dataset.preprocessing import Preprocessing
+from deep_tools.dataset.preprocessing import Preprocessing
 
 
 class ResizePreprocessor(Preprocessing):

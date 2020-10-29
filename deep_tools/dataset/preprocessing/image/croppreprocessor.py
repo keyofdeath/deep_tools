@@ -2,7 +2,7 @@
 import cv2
 import numpy as np
 
-from k_deep.dataset.preprocessing import Preprocessing
+from deep_tools.dataset.preprocessing import Preprocessing
 
 
 class CropPreprocessor(Preprocessing):

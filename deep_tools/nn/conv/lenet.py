@@ -7,7 +7,7 @@ from tensorflow.keras.layers import Flatten
 from tensorflow.keras.layers import MaxPooling2D
 from tensorflow.keras.models import Sequential
 
-from k_deep.nn.abstract_model import AbstractModel
+from deep_tools.nn.abstract_model import AbstractModel
 
 
 class LeNet(AbstractModel):

@@ -8,7 +8,7 @@ import logging.handlers
 import os
 from typing import Text
 
-from k_deep.utils.files_tools import read_json_file
+from deep_tools.utils.files_tools import read_json_file
 
 PYTHON_LOGGER = logging.getLogger(__name__)
 if not os.path.exists("log"):

@@ -8,7 +8,7 @@ import os
 
 import tensorflow as tf
 
-from k_deep.nn import Transformer
+from deep_tools.nn import Transformer
 
 PYTHON_LOGGER = logging.getLogger(__name__)
 if not os.path.exists("log"):

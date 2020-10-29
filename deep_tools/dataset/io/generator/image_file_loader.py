@@ -8,7 +8,7 @@ import os
 
 import cv2
 
-from k_deep.io.generator.generator import Generator
+from deep_tools.io.generator.generator import Generator
 
 PYTHON_LOGGER = logging.getLogger(__name__)
 if not os.path.exists("log"):
